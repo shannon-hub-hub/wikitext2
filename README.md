@@ -11,8 +11,8 @@ To match the scale of the reference implementation and stay within a practical t
 | Split      | Sentences used | Input sequences (seq_len=6) |
 | ---------- | -------------- | --------------------------- |
 | Train      | 25,000         | 560,625                     |
-| Validation | 5,000          | derivable                   |
-| Test       | none           | --                          |
+| Validation | 5,000          | 112336                      |
+| Test       | 5,000          | 111274                      |
 
 Vocabulary size: 39,996 unique word-level tokens (n_vocab), including <pad> and <unk> as the last two indices (39994, 39995).
 
@@ -35,7 +35,7 @@ leakage.
 | Recurrence                | Yes (2 states: h, c)              | Yes (1 state: h) | No (self-attention)                     |
 | Sequence order            | Implicit (via recurrence)         | Implicit         | Explicit (learned positional embedding) |
 | Future-token leakage risk | None (sequential by construction) | None             | Prevented via causal mask               |
-| Params (approx., matched) | ~9.28M                            | ~9.25M           | ~8.22M                                  |
+| Params (approx., matched) | ~9.27M                            | ~9.24M           | ~8.22M                                  |
 
 All three share the same embedding dimension and hidden size where
 architecturally comparable, sized to land within roughly the same parameter
@@ -44,16 +44,18 @@ count so comparisons reflect inductive bias rather than raw capacity.
 # Results
 
 ![Training time per epoch](results/training_time_per_epoch_by_architecture.png)
-GRU epoch times was highly inconsistent (likely due to background system load), while the transformer and LSTM trained at a stable ~165-177s/epoch, making cross-architecture time comparisons unreliable without controlling for this.
+GRU epoch times were highly inconsistent (likely due to background system load, ranging from 123s to 4353s across epochs), while LSTM (125-131s/epoch) and the transformer (163-177s/epoch) each trained at their own stable, consistent pace. Using median epoch time rather than total time as a fairer comparison: LSTM (128.6s) < Transformer (168.9s) < GRU (190.8s).
 
 ![Training perplexity](results/training_ppl_with_val_ppl_as_dashed.png)
 all three models converge to low train perplexity (LSTM 67, GRU 63, Transformer 137) far below their validation perplexity lines (~3000s), visually exposing the shared overfitting problem across architectures.
 
-![Train vs validation loss (generalization gap)](results/train_vs_validation_loss.png)
-all three models show a large, similarly-sized gap between final train and validation loss, reinforcing that the overfitting is a property of the data setup (short context, overlapping windows) rather than any one architecture’s weakness.
+![Train vs validation vs test loss (generalization gap)](results/train_vs_validation_vs_test_loss.png)
+all three models show a large, similarly-sized gap between train loss and both validation and test loss, and test loss tracks validation closely for every architecture. This confirms the overfitting is systematic (a property of the data setup: short context, overlapping windows) rather than specific to the validation split.
+
+Test set results (perplexity ~3546 LSTM, ~3306 GRU, ~3084 Transformer) closely track validation perplexity for all three architectures, confirming the overfitting pattern is systematic rather than specific to the validation split.
 
 ![Total training time vs final validation perplexity](results/time_vs_val_ppl.png)
-since validation perplexity is nearly identical across models, this panel mainly shows a time-efficiency comparison, transformer converges to comparable generalization performance without a runtime advantage or penalty relative to LSTM/GRU here.
+since validation perplexity is nearly identical across models, this panel mainly shows a time-efficiency comparison. The transformer achieves the best validation perplexity at a moderate time cost; LSTM trains fastest but generalizes the worst; GRU is the slowest per epoch and lands in the middle on perplexity, so it doesn't have a clear advantage on either axis in this comparison.
 
 ![Parameter Efficiency](results/param_efficiency.png)
 transformer achieves comparable validation perplexity to LSTM/GRU with a similar or smaller parameter count, but the real efficiency question, since all three overfit similarly, isn’t well resolved by this panel and needs to be read alongside the overfitting finding rather than as a standalone quality signal.
@@ -71,7 +73,7 @@ All three architectures show a similar pattern: low train perplexity (LSTM 67, G
 | Model       | Generated Text                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | LSTM        | The entire highway system in the region of a new badge in September 2006 and the second season premiere . was the only feature in late 1980s in June . ' was the monarch could have had the right side not the right to take control the first down with their sons the rear superstructure were bricked for the time and then to reduce to go ahead . as punk rock Department of a new badge but still loved in a short place during its time construction and was made by some Arkansans . and are known for their hardiness              |
-|  |
+|             |
 | GRU         | The first down M 37 yard unsportsmanlike convoy were removed from a fire hydrant . while ' and ran to the south west coast of Parliament in 1937 by plate and the National Highway Museum of Mount Erebus and in the middle . who were theoretically in the middle . while it has been made in other cultures . and ' 80s ' . ' defense ' Apparatus in 2009 and the United Nations . who was a notoriously of the state of the state is to protect a product or the basis for a new point . 's ' side                                       |
 | Transformer | The frock Unyanyembe numbering Unyanyembe for the freeway was named to have the first to begin and townships and townships with traffic volumes in 2015 to the pavement . River 's map and the state Veronica Giacomo and was completed . ' map and opened to pavement . Sea in 2004 's Michigan Foundation to the freeway and mobility and the state highway system . map for faking with Mac for faking and the state Veronica Mars . ' Shipyard . ' Veronica and the second phase . 's first and the United States for faking in 2015 's |
 
@@ -87,7 +89,7 @@ visually apparent in a way the aggregate perplexity number alone does not.
 
 ### Dataset size and training convergence
 
-`num_sentences` was reduced from the full corpus (2,416,048 input sequences) to 25,000 sentences (626,986 sequences), matching the scale of the reference tutorial implementation. This followed observing that training on the full dataset for a fixed 10 epochs produced generated text dominated by high-frequency utility words, with little content-word variety.
+`num_sentences` was reduced from the full corpus (2,416,048 input sequences) to 25,000 sentences (560,625 sequences), matching the scale of the reference tutorial implementation. This followed observing that training on the full dataset for a fixed 10 epochs produced generated text dominated by high-frequency utility words, with little content-word variety.
 
 A preprocessing audit ruled out a data-cleaning bug as the cause: `<unk>` tokens were confirmed properly removed, and the word-frequency distribution matched the expected Zipfian pattern for English text. This pointed to insufficient training exposure relative to dataset size, rather than a data quality issue, so the dataset was scaled down to match the reference implementation's regime while holding epoch count and model capacity fixed. This let the models reach a more advanced stage of convergence within the same training budget, evidenced by more varied generated text from epoch 1
 onward.
