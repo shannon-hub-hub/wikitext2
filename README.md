@@ -42,10 +42,6 @@
 - Multi-seed variance (3 seeds designed, 1 run so far) and the long-context (seq_len=30) condition are not yet run -- that's the next step before treating any of the above as a stable finding rather than a first result.
 - Parameter match landed at 9.7% off target (1% tolerance configured but not reached in the search range used).
 
-## Files
-
-- `wikitext2_exploration_fixed.ipynb` -- full pipeline, GPU-ready, verified to execute cleanly end-to-end.
-- `README.md` -- full-detail version with per-fix rationale and complete results/notes.
 
 ## References
 
